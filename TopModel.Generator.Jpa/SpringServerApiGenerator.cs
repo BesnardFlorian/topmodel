@@ -145,18 +145,9 @@ public class SpringServerApiGenerator : EndpointsGeneratorBase<JpaConfig>
         {
             foreach (var param in endpoint.Params.Where(param => param is CompositionProperty || (param.Domain?.BodyParam ?? false) || (param.Domain?.IsMultipart ?? false)))
             {
-                var ann = string.Empty;
-                if (!(param.Domain?.IsMultipart ?? false))
-                {
-                    ann += @$"@ModelAttribute ";
-                    fw.AddImport("org.springframework.web.bind.annotation.ModelAttribute");
-                }
-                else
-                {
-                    ann += @$"@RequestPart(value = ""{param.GetParamName()}"", required = {(param is not IFieldProperty fp || fp.Required).ToString().ToFirstLower()}) ";
-                    fw.AddImport("org.springframework.web.bind.annotation.RequestPart");
-                }
-
+                var ann = @$"@RequestPart(value = ""{param.GetParamName()}"", required = {(param is not IFieldProperty fp || fp.Required).ToString().ToFirstLower()}) ";
+                fw.AddImport("org.springframework.web.bind.annotation.RequestPart");
+                
                 methodParams.Add($"{ann}{Config.GetType(param)} {param.GetParamName()}");
             }
         }
