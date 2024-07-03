@@ -81,8 +81,8 @@ public class NuxtApiClientGenerator : EndpointsGeneratorBase<JavascriptConfig>
                 fw.WriteLine("        {");
                 foreach (var param in endpoint.Params)
                 {
-                
                     fw.Write($@"            {param.GetParamName()}");
+
 
                     if (endpoint.Params.IndexOf(param) < endpoint.Params.Count - 1)
                     {
