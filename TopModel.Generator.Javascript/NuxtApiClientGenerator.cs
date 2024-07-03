@@ -68,7 +68,7 @@ public class NuxtApiClientGenerator : EndpointsGeneratorBase<JavascriptConfig>
             foreach (var param in endpoint.Params)
             {
                 var defaultValue = Config.GetValue(param, Classes);
-                fw.Write($"{param.GetParamName()}{(param.IsQueryParam() && !endpoint.IsMultipart && defaultValue == "undefined" ? "?" : string.Empty)}: {Config.GetType(param, Classes)}{(defaultValue != "undefined" ? $" = {defaultValue}" : string.Empty)}, ");
+                fw.Write($"{param.GetParamName()}{((param.IsQueryParam() || (endpoint.IsMultipart && param is IFieldProperty)) && defaultValue == "undefined" ? "?" : string.Empty)}: {Config.GetType(param, Classes)}{(defaultValue != "undefined" ? $" = {defaultValue}" : string.Empty)}, ");
             }
 
             var fetchReturnType = endpoint.Returns == null ? "void" : Config.GetType(endpoint.Returns, Classes);
@@ -81,14 +81,8 @@ public class NuxtApiClientGenerator : EndpointsGeneratorBase<JavascriptConfig>
                 fw.WriteLine("        {");
                 foreach (var param in endpoint.Params)
                 {
-                    if (param is IFieldProperty)
-                    {
-                        fw.Write($@"            {param.GetParamName()}");
-                    }
-                    else
-                    {
-                        fw.Write($@"            ...{param.GetParamName()}");
-                    }
+                    fw.Write($@"            {param.GetParamName()}");
+
 
                     if (endpoint.Params.IndexOf(param) < endpoint.Params.Count - 1)
                     {
@@ -137,17 +131,38 @@ public class NuxtApiClientGenerator : EndpointsGeneratorBase<JavascriptConfig>
         if (endpoints.Any(endpoint => endpoint.IsMultipart))
         {
             fw.WriteLine(@"
-function fillFormData(data: any, formData: FormData, prefix = """") {
-    if (Array.isArray(data)) {
-        data.forEach((item, i) => fillFormData(item, formData, prefix + (typeof item === ""object"" && !(item instanceof File) ? `[${i}]` : """")));
-    } else if (typeof data === ""object"" && !(data instanceof File)) {
-        for (const key in data) {
-            fillFormData(data[key], formData, (prefix ? `${prefix}.` : """") + key);
+    function fillFormData(data: any, formData: FormData, partName = """") {
+
+        if(partName === """"){
+            for (const key in data) {
+                fillFormData(data[key], formData, (partName ? `${partName}.` : """") + key);
+            }
+            return;
         }
-    } else {
-        formData.append(prefix, data);
-    }
-}");
+
+        if (Array.isArray(data)) {
+            data.forEach((item, i) => fillFormData(item, formData, partName + (typeof item === ""object"" && !(item instanceof File) ? `[${i}]` : """")));
+            return;
+        } 
+
+        if (data === null || data === undefined) {
+            formData.append(partName, null);
+            return;
+        }
+
+        if (data instanceof Blob || data instanceof File) {
+           formData.append(partName, data);
+           return;
+        }
+
+        if (typeof data  === 'object') {
+            formData.append(partName, JSON.stringify(data));
+            return;
+        }
+
+        formData.append(partName, String(data));
+        return;
+    }");
         }
     }
 }
